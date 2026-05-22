@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluxo de Caixa — Ditado por Voz</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --accent: #00e5a0;
+    --accent2: #ff6b35;
+    --accent3: #ffd166;
+    --text: #f0f0f0;
+    --muted: #666;
+    --border: #2a2a2a;
+    --danger: #ff4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+  }
+  header { text-align: center; margin-bottom: 36px; }
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+  header p { color: var(--muted); font-size: 0.78rem; margin-top: 8px; letter-spacing: 0.5px; }
+  .container { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 18px; }
+
+  .instrucao {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 0.77rem;
+    color: var(--muted);
+    line-height: 1.9;
+  }
+  .instrucao span { color: var(--accent); font-weight: 500; }
+  .instrucao .step { color: var(--accent3); }
+
+  /* MODO */
+  .modo-row { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .modo-btn {
+    flex: 1; padding: 11px; border: none;
+    background: var(--surface); color: var(--muted);
+    font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    border-right: 1px solid var(--border); letter-spacing: 0.3px;
+  }
+  .modo-btn:last-child { border-right: none; }
+  .modo-btn.active-cab { background: var(--accent3); color: #000; }
+  .modo-btn.active-reg { background: var(--accent); color: #000; }
+
+  /* CABEÇALHO */
+  #cabecalho-display {
+    display: none;
+    background: #1a1400;
+    border: 1px solid var(--accent3);
+    border-radius: 10px;
+    padding: 14px 18px;
+    gap: 20px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  #cabecalho-display.show { display: flex; }
+  .cab-info { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  .cab-item label { font-size: 0.62rem; color: var(--accent3); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 3px; }
+  .cab-item span { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--text); }
+  .cab-item .dia-semana { font-size: 0.75rem; color: var(--accent3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .btn-edit-cab {
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--accent3); background: none; color: var(--accent3);
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-edit-cab:hover { background: var(--accent3); color: #000; }
+
+  /* FARMÁCIA */
+  .farmacia-row { display: flex; gap: 10px; }
+  .farmacia-btn {
+    flex: 1; padding: 11px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .farmacia-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* CONTADOR DE ORDEM */
+  #ordem-counter {
+    display: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  #ordem-counter.show { display: flex; }
+  .counter-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .counter-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .counter-sub { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+  .btn-reset-ordem {
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: none; color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-reset-ordem:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* MIC */
+  .mic-area {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .mic-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: -4px; }
+  .mic-label.cab-mode { color: var(--accent3); }
+  .mic-label.reg-mode { color: var(--accent); }
+
+  #mic-btn {
+    width: 86px; height: 86px; border-radius: 50%; border: none;
+    background: var(--surface2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; outline: 2px solid var(--border); outline-offset: 4px;
+  }
+  #mic-btn:hover { background: #2f2f2f; }
+  #mic-btn.listening-cab { background: var(--accent3); outline-color: var(--accent3); animation: pulse-cab 1.2s ease-in-out infinite; }
+  #mic-btn.listening-cab svg { color: #000; }
+  #mic-btn.listening-reg { background: var(--accent); outline-color: var(--accent); animation: pulse-reg 1.2s ease-in-out infinite; }
+  #mic-btn.listening-reg svg { color: #000; }
+  @keyframes pulse-cab { 0%,100%{box-shadow:0 0 0 0 rgba(255,209,102,0.4);}50%{box-shadow:0 0 0 18px rgba(255,209,102,0);} }
+  @keyframes pulse-reg { 0%,100%{box-shadow:0 0 0 0 rgba(0,229,160,0.4);}50%{box-shadow:0 0 0 18px rgba(0,229,160,0);} }
+  #mic-btn svg { width: 32px; height: 32px; color: var(--accent); transition: color 0.2s; }
+
+  #status-text { font-size: 0.75rem; color: var(--muted); text-align: center; min-height: 18px; transition: color 0.2s; }
+  #status-text.active { color: var(--accent); }
+  #status-text.active-cab { color: var(--accent3); }
+  #status-text.erro { color: var(--danger); }
+
+  #transcript-box {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; font-size: 0.82rem; color: var(--muted); min-height: 40px; font-style: italic;
+  }
+
+  /* PREVIEW CABEÇALHO */
+  #preview-cab {
+    display: none; background: #1a1400; border: 1px solid var(--accent3);
+    border-radius: 8px; padding: 14px 18px; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  }
+  #preview-cab.show { display: flex; }
+
+  /* PREVIEW VALOR */
+  #preview {
+    display: none; background: #0a2a1e; border: 1px solid var(--accent);
+    border-radius: 8px; padding: 14px 18px; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  }
+  #preview.show { display: flex; }
+
+  .preview-pair { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .preview-item label { font-size: 0.62rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+  .preview-item.cab-item-prev label { color: var(--accent3); }
+  .preview-item.ordem-auto label { color: var(--muted); }
+  .preview-item span { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--text); }
+  .preview-item.ordem-auto span { font-size: 1rem; color: var(--muted); }
+  .preview-item .sub { font-size: 0.72rem; color: var(--accent3); font-family: 'DM Mono'; margin-top: 2px; }
+  .preview-btns { display: flex; gap: 8px; }
+  .btn-confirmar, .btn-cancelar {
+    padding: 8px 18px; border-radius: 6px; border: none;
+    font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-confirmar { background: var(--accent); color: #000; }
+  .btn-confirmar:hover { background: #00c988; }
+  .btn-confirmar.cab { background: var(--accent3); }
+  .btn-confirmar.cab:hover { background: #e6bc00; }
+  .btn-cancelar { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .btn-cancelar:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* TABELA */
+  .table-header { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .table-title { font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .table-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-small { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-export { padding: 6px 14px; border-radius: 6px; border: none; background: var(--accent); color: #000; font-family: 'Syne', sans-serif; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+  .btn-export:hover { background: #00c988; }
+  .tabs { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .tab { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: none; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
+  .tab.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .count-badge { font-size: 0.62rem; margin-left: 4px; opacity: 0.7; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.79rem; margin-top: 6px; }
+  thead tr { border-bottom: 1px solid var(--accent); }
+  th { text-align: left; padding: 9px 10px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); font-weight: 500; }
+  th.r, td.r { text-align: right; }
+  th.c, td.c { text-align: center; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+  .td-valor { font-weight: 500; color: var(--accent2); }
+  .td-farm { font-size: 0.65rem; background: var(--surface2); border-radius: 4px; padding: 2px 6px; display: inline-block; color: var(--muted); }
+  .td-date { font-size: 0.7rem; color: var(--muted); }
+  .btn-del { background: none; border: none; color: var(--border); cursor: pointer; font-size: 1rem; line-height: 1; padding: 4px; transition: color 0.15s; }
+  .btn-del:hover { color: var(--danger); }
+  .empty-state { text-align: center; padding: 32px; color: var(--muted); font-size: 0.75rem; }
+  .date-sep td { background: #111; padding: 6px 10px; font-size: 0.68rem; color: var(--accent3); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-family: 'Syne', sans-serif; font-weight: 700; }
+  .total-row { display: flex; justify-content: space-between; padding: 10px 10px; border-top: 1px solid var(--accent); margin-top: 2px; font-size: 0.8rem; }
+  .total-label { font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .total-valor { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 800; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎙 Fluxo de Caixa por Voz</h1>
+  <p>Dite a data, escolha a farmácia, e dite apenas os valores — a ordem é automática.</p>
+</header>
+
+<div class="container">
+
+  <div class="instrucao">
+    <span class="step">Passo 1 —</span> Selecione <span>Cabeçalho</span> e dite a data: <span>"vinte e dois de maio de dois mil e vinte e seis"</span><br>
+    <span class="step">Passo 2 —</span> Selecione <span>Registo</span>, escolha a farmácia e dite apenas o valor: <span>"duzentos e cinquenta"</span><br>
+    A ordem é gerada automaticamente: 1, 2, 3… sem erros. Para recomeçar a ordem, carregue em <span>Reiniciar ordem</span>.
+  </div>
+
+  <!-- MODO -->
+  <div class="modo-row">
+    <button class="modo-btn active-cab" id="btn-modo-cab" onclick="setModo('cab')">📅 Cabeçalho (data)</button>
+    <button class="modo-btn" id="btn-modo-reg" onclick="setModo('reg')">✏️ Registo (valor)</button>
+  </div>
+
+  <!-- CABEÇALHO ATUAL -->
+  <div id="cabecalho-display">
+    <div class="cab-info">
+      <div class="cab-item">
+        <label>Data da Caixa</label>
+        <span id="cab-data-txt">—</span>
+        <div class="dia-semana" id="cab-diasem-txt"></div>
+      </div>
+    </div>
+    <button class="btn-edit-cab" onclick="setModo('cab')">✎ Alterar</button>
+  </div>
+
+  <!-- FARMÁCIA -->
+  <div class="farmacia-row" id="farmacia-row" style="display:none">
+    <button class="farmacia-btn active" id="btn-farm1" onclick="setFarmacia(1)">🏥 Farmácia 1</button>
+    <button class="farmacia-btn" id="btn-farm2" onclick="setFarmacia(2)">🏥 Farmácia 2</button>
+  </div>
+
+  <!-- CONTADOR DE ORDEM -->
+  <div id="ordem-counter" class="show">
+    <div>
+      <div class="counter-label">Próxima ordem</div>
+      <div class="counter-val" id="counter-num">1</div>
+      <div class="counter-sub">gerada automaticamente</div>
+    </div>
+    <button class="btn-reset-ordem" onclick="resetOrdem()">↺ Reiniciar ordem</button>
+  </div>
+
+  <!-- MIC -->
+  <div class="mic-area">
+    <div class="mic-label cab-mode" id="mic-label">Modo: Cabeçalho</div>
+    <button id="mic-btn" onclick="toggleMic()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+    </button>
+    <div id="status-text">Carregue para falar a data</div>
+    <div id="transcript-box">— aguardando ditado —</div>
+  </div>
+
+  <!-- PREVIEW CABEÇALHO -->
+  <div id="preview-cab">
+    <div class="preview-pair">
+      <div class="preview-item cab-item-prev">
+        <label>Data detectada</label>
+        <span id="prev-cab-data">—</span>
+        <div class="sub" id="prev-cab-diasem"></div>
+      </div>
+    </div>
+    <div class="preview-btns">
+      <button class="btn-cancelar" onclick="cancelarPreviewCab()">✕ Cancelar</button>
+      <button class="btn-confirmar cab" onclick="confirmarCabecalho()">✓ Confirmar</button>
+    </div>
+  </div>
+
+  <!-- PREVIEW VALOR -->
+  <div id="preview">
+    <div class="preview-pair">
+      <div class="preview-item ordem-auto">
+        <label>Ordem (auto)</label>
+        <span id="prev-ordem">—</span>
+      </div>
+      <div class="preview-item">
+        <label>Valor (MT)</label>
+        <span id="prev-valor">—</span>
+      </div>
+    </div>
+    <div class="preview-btns">
+      <button class="btn-cancelar" onclick="cancelarPreview()">✕ Cancelar</button>
+      <button class="btn-confirmar" onclick="confirmarLinha()">✓ Confirmar</button>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div>
+    <div class="table-header">
+      <div class="table-title">Registos</div>
+      <div class="table-actions">
+        <button class="btn-small" onclick="limparTudo()">Limpar tudo</button>
+        <button class="btn-export" onclick="exportarCSV()">⬇ Exportar CSV</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="tab-todos" onclick="setTab('todos')">Todos <span class="count-badge" id="cnt-todos">0</span></button>
+      <button class="tab" id="tab-f1" onclick="setTab('farm1')">Farmácia 1 <span class="count-badge" id="cnt-f1">0</span></button>
+      <button class="tab" id="tab-f2" onclick="setTab('farm2')">Farmácia 2 <span class="count-badge" id="cnt-f2">0</span></button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Ordem</th>
+          <th class="r">Valor (MT)</th>
+          <th class="c">Farmácia</th>
+          <th class="c">Data</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tabela-body">
+        <tr><td colspan="5" class="empty-state">Sem registos. Comece pelo cabeçalho!</td></tr>
+      </tbody>
+    </table>
+    <div class="total-row">
+      <span class="total-label">Total visível</span>
+      <span class="total-valor" id="total-val">0,00 MT</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Estado ───────────────────────────────────────────────
+let dados = JSON.parse(localStorage.getItem('fluxo_dados_v3') || '[]');
+let farmaciaAtiva = 1;
+let tabAtiva = 'todos';
+let modoAtivo = 'cab';
+let recognition = null;
+let listening = false;
+let pendente = null;
+let pendenteCab = null;
+let cabecalhoAtual = JSON.parse(localStorage.getItem('fluxo_cab') || 'null');
+let ordemAtual = parseInt(localStorage.getItem('fluxo_ordem') || '1');
+
+const DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const MESES_PT = {
+  'janeiro':0,'fevereiro':1,'março':2,'marco':2,'abril':3,'maio':4,'junho':5,
+  'julho':6,'agosto':7,'setembro':8,'outubro':9,'novembro':10,'dezembro':11
+};
+
+// ─── Init ─────────────────────────────────────────────────
+setModo('cab');
+renderCabecalho();
+renderTabela();
+atualizarContador();
+
+// ─── Modo ─────────────────────────────────────────────────
+function setModo(m) {
+  modoAtivo = m;
+  document.getElementById('btn-modo-cab').className = 'modo-btn' + (m==='cab' ? ' active-cab' : '');
+  document.getElementById('btn-modo-reg').className = 'modo-btn' + (m==='reg' ? ' active-reg' : '');
+  document.getElementById('farmacia-row').style.display = m==='reg' ? 'flex' : 'none';
+  document.getElementById('ordem-counter').style.display = m==='reg' ? 'flex' : 'none';
+  const lbl = document.getElementById('mic-label');
+  lbl.textContent = m==='cab' ? 'Modo: Cabeçalho (data da caixa)' : 'Modo: Registo (valor)';
+  lbl.className = 'mic-label ' + (m==='cab' ? 'cab-mode' : 'reg-mode');
+  document.getElementById('mic-btn').className = '';
+  document.getElementById('mic-btn').querySelector('svg').style.color = m==='cab' ? 'var(--accent3)' : 'var(--accent)';
+  setStatus(m==='cab' ? 'Carregue para falar a data' : 'Carregue para ditar o valor', '');
+  document.getElementById('preview').classList.remove('show');
+  document.getElementById('preview-cab').classList.remove('show');
+}
+
+// ─── Farmácia ─────────────────────────────────────────────
+function setFarmacia(n) {
+  farmaciaAtiva = n;
+  document.getElementById('btn-farm1').classList.toggle('active', n===1);
+  document.getElementById('btn-farm2').classList.toggle('active', n===2);
+}
+
+// ─── Tab ──────────────────────────────────────────────────
+function setTab(t) {
+  tabAtiva = t;
+  document.getElementById('tab-todos').classList.toggle('active', t==='todos');
+  document.getElementById('tab-f1').classList.toggle('active', t==='farm1');
+  document.getElementById('tab-f2').classList.toggle('active', t==='farm2');
+  renderTabela();
+}
+
+// ─── Ordem automática ─────────────────────────────────────
+function atualizarContador() {
+  document.getElementById('counter-num').textContent = ordemAtual;
+}
+
+function resetOrdem() {
+  if (!confirm('Reiniciar a ordem para 1?')) return;
+  ordemAtual = 1;
+  localStorage.setItem('fluxo_ordem', '1');
+  atualizarContador();
+}
+
+// ─── Microfone ────────────────────────────────────────────
+function toggleMic() {
+  if (listening) { recognition && recognition.stop(); setListening(false); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { setStatus('Este browser não suporta reconhecimento de voz.', 'erro'); return; }
+
+  recognition = new SR();
+  recognition.lang = 'pt-PT';
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 3;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    document.getElementById('mic-btn').className = modoAtivo==='cab' ? 'listening-cab' : 'listening-reg';
+    listening = true;
+    setStatus(modoAtivo==='cab' ? 'A ouvir… dite a data' : 'A ouvir… dite o valor', modoAtivo==='cab'?'active-cab':'active');
+    document.getElementById('transcript-box').textContent = '🎙 …';
+  };
+
+  recognition.onresult = (e) => {
+    const transcripts = [];
+    for (let i = 0; i < e.results[0].length; i++) transcripts.push(e.results[0][i].transcript);
+    document.getElementById('transcript-box').textContent = transcripts[0];
+    if (e.results[0].isFinal) {
+      if (modoAtivo === 'cab') processarCabecalho(transcripts);
+      else processarValor(transcripts);
+    }
+  };
+
+  recognition.onerror = (e) => { setStatus('Erro: ' + e.error, 'erro'); setListening(false); };
+  recognition.onend = () => { setListening(false); };
+  recognition.start();
+}
+
+function setListening(val) {
+  listening = val;
+  if (!val) document.getElementById('mic-btn').className = '';
+}
+
+function setStatus(msg, tipo) {
+  const el = document.getElementById('status-text');
+  el.textContent = msg;
+  el.className = tipo || '';
+}
+
+// ─── CABEÇALHO ────────────────────────────────────────────
+function processarCabecalho(alternativas) {
+  for (const texto of alternativas) {
+    const data = extrairData(texto);
+    if (data) {
+      pendenteCab = data;
+      document.getElementById('prev-cab-data').textContent = formatarData(data.date);
+      document.getElementById('prev-cab-diasem').textContent = DIAS[data.date.getDay()];
+      document.getElementById('preview-cab').classList.add('show');
+      setStatus('Data detectada — confirme ou cancele', 'active-cab');
+      return;
+    }
+  }
+  setStatus('Não detectei a data. Tente: "vinte e dois de maio de dois mil e vinte e seis"', 'erro');
+  setTimeout(() => setStatus('Carregue para falar a data', ''), 4000);
+}
+
+function extrairData(texto) {
+  const t = texto.toLowerCase().trim();
+  const numMatch = t.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (numMatch) {
+    const d = parseInt(numMatch[1]), m = parseInt(numMatch[2])-1, a = parseInt(numMatch[3]);
+    const y = a < 100 ? 2000+a : a;
+    const dt = new Date(y, m, d);
+    if (!isNaN(dt.getTime())) return { date: dt };
+  }
+  let mes = null;
+  for (const [nome, idx] of Object.entries(MESES_PT)) {
+    if (t.includes(nome)) { mes = idx; break; }
+  }
+  if (mes === null) return null;
+  const partes = t.split(new RegExp(Object.keys(MESES_PT).join('|')));
+  if (partes.length < 2) return null;
+  const dia = textoParaNumero(partes[0].replace(/\bde\b/g,' ').trim());
+  const ano = textoParaNumero(partes[1].replace(/\bde\b/g,' ').trim());
+  if (!dia || ano === null) return null;
+  const anoFinal = ano < 100 ? 2000+ano : ano;
+  const dt = new Date(anoFinal, mes, dia);
+  if (isNaN(dt.getTime()) || dt.getDate() !== dia) return null;
+  return { date: dt };
+}
+
+function confirmarCabecalho() {
+  if (!pendenteCab) return;
+  cabecalhoAtual = {
+    data: formatarData(pendenteCab.date),
+    diasemana: DIAS[pendenteCab.date.getDay()],
+    ts: pendenteCab.date.getTime()
+  };
+  localStorage.setItem('fluxo_cab', JSON.stringify(cabecalhoAtual));
+  renderCabecalho();
+  document.getElementById('preview-cab').classList.remove('show');
+  pendenteCab = null;
+  setModo('reg');
+}
+
+function cancelarPreviewCab() {
+  pendenteCab = null;
+  document.getElementById('preview-cab').classList.remove('show');
+  setStatus('Cancelado.', '');
+}
+
+function renderCabecalho() {
+  if (cabecalhoAtual) {
+    document.getElementById('cab-data-txt').textContent = cabecalhoAtual.data;
+    document.getElementById('cab-diasem-txt').textContent = cabecalhoAtual.diasemana;
+    document.getElementById('cabecalho-display').classList.add('show');
+  } else {
+    document.getElementById('cabecalho-display').classList.remove('show');
+  }
+}
+
+function formatarData(d) {
+  return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+}
+
+// ─── VALOR (ordem automática) ─────────────────────────────
+const palavrasNumero = {
+  'zero':0,'um':1,'uma':1,'dois':2,'duas':2,'três':3,'tres':3,
+  'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,
+  'dez':10,'onze':11,'doze':12,'treze':13,'catorze':14,'quatorze':14,
+  'quinze':15,'dezasseis':16,'dezassete':17,'dezoito':18,'dezanove':19,
+  'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,'sessenta':60,
+  'setenta':70,'oitenta':80,'noventa':90,'cem':100,'cento':100,
+  'duzentos':200,'duzentas':200,'trezentos':300,'trezentas':300,
+  'quatrocentos':400,'quatrocentas':400,'quinhentos':500,'quinhentas':500,
+  'seiscentos':600,'seiscentas':600,'setecentos':700,'setecentas':700,
+  'oitocentos':800,'oitocentas':800,'novecentos':900,'novecentas':900,
+  'mil':1000,'e':0
+};
+
+function textoParaNumero(texto) {
+  if (!texto) return null;
+  const limpo = texto.replace(/[,\.]/g,'').trim();
+  const direto = parseFloat(limpo);
+  if (!isNaN(direto) && direto > 0) return direto;
+  const palavras = texto.toLowerCase().replace(/[,\.]/g,' ').replace(/\s+/g,' ').trim().split(' ');
+  let total = 0, atual = 0;
+  for (const p of palavras) {
+    if (!p) continue;
+    if (p === 'mil') { atual = atual===0?1:atual; total += atual*1000; atual=0; }
+    else if (palavrasNumero[p] !== undefined) {
+      if (palavrasNumero[p] === 0) continue;
+      if (palavrasNumero[p] >= 100) { atual = atual===0 ? palavrasNumero[p] : atual * palavrasNumero[p]; }
+      else { atual += palavrasNumero[p]; }
+    }
+  }
+  total += atual;
+  return total > 0 ? total : null;
+}
+
+function processarValor(alternativas) {
+  for (const texto of alternativas) {
+    const valor = textoParaNumero(texto);
+    if (valor !== null) {
+      pendente = { valor };
+      document.getElementById('prev-ordem').textContent = '#' + ordemAtual;
+      document.getElementById('prev-valor').textContent = formatarValor(valor);
+      document.getElementById('preview').classList.add('show');
+      setStatus('Valor detectado — confirme ou cancele', 'active');
+      return;
+    }
+  }
+  setStatus('Não detectei o valor. Tente: "duzentos e cinquenta"', 'erro');
+  setTimeout(() => setStatus('Carregue para ditar o valor', ''), 3500);
+}
+
+function cancelarPreview() {
+  pendente = null;
+  document.getElementById('preview').classList.remove('show');
+  setStatus('Cancelado. Carregue para ditar.', '');
+}
+
+function confirmarLinha() {
+  if (!pendente) return;
+  if (!cabecalhoAtual) {
+    alert('Por favor defina primeiro o cabeçalho (data da caixa).');
+    setModo('cab'); return;
+  }
+  const linha = {
+    id: Date.now(),
+    farmacia: farmaciaAtiva,
+    ordem: ordemAtual,
+    valor: pendente.valor,
+    data: cabecalhoAtual.data,
+    diasemana: cabecalhoAtual.diasemana,
+    ts: cabecalhoAtual.ts
+  };
+  dados.push(linha);
+  ordemAtual++;
+  localStorage.setItem('fluxo_ordem', String(ordemAtual));
+  atualizarContador();
+  salvar();
+  renderTabela();
+  cancelarPreview();
+  setStatus('✓ Adicionado! Próxima ordem: ' + ordemAtual, 'active');
+  setTimeout(() => setStatus('Carregue para ditar o valor', ''), 2000);
+}
+
+// ─── Tabela ───────────────────────────────────────────────
+function renderTabela() {
+  const filtrado = tabAtiva === 'todos' ? dados :
+                   tabAtiva === 'farm1' ? dados.filter(d=>d.farmacia===1) :
+                                          dados.filter(d=>d.farmacia===2);
+  const body = document.getElementById('tabela-body');
+
+  if (filtrado.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">Sem registos. Comece pelo cabeçalho!</td></tr>';
+    document.getElementById('total-val').textContent = '0,00 MT';
+    return;
+  }
+
+  let html = '', ultimaData = null;
+  filtrado.forEach((d) => {
+    if (d.data !== ultimaData) {
+      ultimaData = d.data;
+      html += `<tr class="date-sep"><td colspan="5">📅 ${d.data} — ${d.diasemana||''}</td></tr>`;
+    }
+    html += `
+      <tr id="row-${d.id}">
+        <td style="font-weight:600;color:var(--muted)">#${d.ordem}</td>
+        <td class="td-valor r">${formatarValor(d.valor)}</td>
+        <td class="c"><span class="td-farm">F${d.farmacia}</span></td>
+        <td class="td-date c">${d.data||'—'}</td>
+        <td class="c"><button class="btn-del" onclick="deletarLinha(${d.id})" title="Remover">✕</button></td>
+      </tr>`;
+  });
+  body.innerHTML = html;
+
+  const total = filtrado.reduce((s,d)=>s+d.valor,0);
+  document.getElementById('total-val').textContent = formatarValor(total) + ' MT';
+
+  document.getElementById('cnt-todos').textContent = dados.length;
+  document.getElementById('cnt-f1').textContent = dados.filter(d=>d.farmacia===1).length;
+  document.getElementById('cnt-f2').textContent = dados.filter(d=>d.farmacia===2).length;
+}
+
+function deletarLinha(id) {
+  dados = dados.filter(d=>d.id!==id);
+  salvar(); renderTabela();
+}
+
+function limparTudo() {
+  if (!confirm('Apagar todos os registos e reiniciar a ordem?')) return;
+  dados = []; ordemAtual = 1;
+  localStorage.setItem('fluxo_ordem','1');
+  atualizarContador();
+  salvar(); renderTabela();
+}
+
+// ─── Export CSV ───────────────────────────────────────────
+function exportarCSV() {
+  if (dados.length === 0) { alert('Não há dados para exportar.'); return; }
+  const linhas = ['Data,Dia da Semana,Farmácia,Ordem,Valor (MT)'];
+  dados.forEach(d => {
+    linhas.push(`${d.data||''},${d.diasemana||''},Farmácia ${d.farmacia},${d.ordem},${d.valor.toFixed(2).replace('.',',')}`);
+  });
+  const blob = new Blob(['\uFEFF' + linhas.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fluxo_caixa_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Utilitários ──────────────────────────────────────────
+function formatarValor(v) {
+  return v.toLocaleString('pt-PT', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function salvar() {
+  localStorage.setItem('fluxo_dados_v3', JSON.stringify(dados));
+}
+</script>
+</body>
+</html>
